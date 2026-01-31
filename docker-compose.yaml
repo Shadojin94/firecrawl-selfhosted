@@ -1,10 +1,11 @@
 name: firecrawl
 
-x-common-service: &common-service
+x-common-service:
   # NOTE: If you don't want to build the service locally,
   # comment out the build: statement and uncomment the image: statement
-  # image: ghcr.io/firecrawl/firecrawl
-  build: apps/api
+  &common-service
+  image: ghcr.io/firecrawl/firecrawl
+  # build: apps/api
 
   ulimits:
     nofile:
@@ -38,8 +39,8 @@ x-common-env: &common-env
   OPENAI_API_KEY: ${OPENAI_API_KEY}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL}
   MODEL_NAME: ${MODEL_NAME}
-  MODEL_EMBEDDING_NAME: ${MODEL_EMBEDDING_NAME} 
-  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL} 
+  MODEL_EMBEDDING_NAME: ${MODEL_EMBEDDING_NAME}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
   SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
   BULL_AUTH_KEY: ${BULL_AUTH_KEY}
   TEST_API_KEY: ${TEST_API_KEY}
@@ -57,10 +58,11 @@ x-common-env: &common-env
 
 services:
   playwright-service:
+    platform: linux/amd64
     # NOTE: If you don't want to build the service locally,
     # comment out the build: statement and uncomment the image: statement
-    # image: ghcr.io/firecrawl/playwright-service:latest
-    build: apps/playwright-service-ts
+    image: ghcr.io/firecrawl/playwright-service:latest
+    # build: apps/playwright-service-ts
     environment:
       PORT: 3000
       PROXY_SERVER: ${PROXY_SERVER}
@@ -126,14 +128,14 @@ services:
         max-size: "5m"
         max-file: "2"
         compress: "true"
-    
+
   rabbitmq:
     image: rabbitmq:3-management
     networks:
       - backend
     command: rabbitmq-server
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_running" ]
       interval: 5s
       timeout: 5s
       retries: 3
@@ -144,9 +146,10 @@ services:
         max-size: "5m"
         max-file: "2"
         compress: "true"
-  
+
   nuq-postgres:
     build: apps/nuq-postgres
+    platform: linux/amd64
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
