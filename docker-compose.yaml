@@ -6,17 +6,18 @@ services:
     image: ghcr.io/firecrawl/playwright-service:latest
     environment:
       PORT: 3000
-      MAX_CONCURRENT_PAGES: ${CRAWL_CONCURRENT_REQUESTS:-10}
+      MAX_CONCURRENT_PAGES: ${CRAWL_CONCURRENT_REQUESTS:-2}
       PROXY_SERVER: ${PROXY_SERVER}
       PROXY_USERNAME: ${PROXY_USERNAME}
       PROXY_PASSWORD: ${PROXY_PASSWORD}
       BLOCK_MEDIA: ${BLOCK_MEDIA}
     networks:
       - backend
-    cpus: 1.0
-    mem_limit: 2G
+    cpus: 0.75
+    mem_limit: 1536M
+    memswap_limit: 1536M
     tmpfs:
-      - /tmp/.cache:noexec,nosuid,size=1g
+      - /tmp/.cache:noexec,nosuid,size=512m
     logging:
       driver: "json-file"
       options:
@@ -25,7 +26,7 @@ services:
         compress: "true"
 
   api:
-    image: ghcr.io/firecrawl/firecrawl
+    image: ghcr.io/firecrawl/firecrawl:latest
     ulimits:
       nofile:
         soft: 65535
@@ -55,10 +56,10 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST:-nuq-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-false}
-      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-8}
-      CRAWL_CONCURRENT_REQUESTS: ${CRAWL_CONCURRENT_REQUESTS:-10}
-      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-5}
-      BROWSER_POOL_SIZE: ${BROWSER_POOL_SIZE:-5}
+      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE:-1}
+      CRAWL_CONCURRENT_REQUESTS: ${CRAWL_CONCURRENT_REQUESTS:-2}
+      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-1}
+      BROWSER_POOL_SIZE: ${BROWSER_POOL_SIZE:-1}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       MODEL_NAME: ${MODEL_NAME}
@@ -88,19 +89,23 @@ services:
       playwright-service:
         condition: service_started
       rabbitmq:
-        condition: service_healthy
+        condition: service_started
+      nuq-postgres:
+        condition: service_started
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
     command: node dist/src/harness.js --start-docker
-    cpus: 2.0
-    mem_limit: 4G
-    memswap_limit: 4G
+    cpus: 1.0
+    mem_limit: 1536M
+    memswap_limit: 1536M
 
   redis:
     image: redis:alpine
     networks:
       - backend
     command: redis-server --bind 0.0.0.0
+    cpus: 0.2
+    mem_limit: 256M
     logging:
       driver: "json-file"
       options:
@@ -113,11 +118,14 @@ services:
     networks:
       - backend
     command: rabbitmq-server
+    cpus: 0.3
+    mem_limit: 512M
     healthcheck:
       test: [ "CMD", "rabbitmq-diagnostics", "-q", "check_running" ]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 45s
     logging:
       driver: "json-file"
       options:
@@ -126,7 +134,7 @@ services:
         compress: "true"
 
   nuq-postgres:
-    build: apps/nuq-postgres
+    image: ghcr.io/firecrawl/nuq-postgres:latest
     platform: linux/amd64
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -134,6 +142,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
     networks:
       - backend
+    cpus: 0.4
+    mem_limit: 512M
     logging:
       driver: "json-file"
       options:
