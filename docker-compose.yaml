@@ -94,10 +94,10 @@ services:
         condition: service_started
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
-    command: node dist/src/harness.js --start-docker
+    command: node dist/src/index.js
     cpus: 1.0
-    mem_limit: 1536M
-    memswap_limit: 1536M
+    mem_limit: 2G
+    memswap_limit: 2G
 
   redis:
     image: redis:alpine
